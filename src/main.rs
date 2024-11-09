@@ -15,6 +15,13 @@ fn main() {
     }
 
     let mut config = Config::init();
+
+    config.hosts.sort();
+    // Technically duplicates can only happen, if the user modified the .toml file manually
+    config.hosts.dedup();
+    config.targets.sort();
+    config.targets.dedup();
+
     let options = options::get_main_options();
 
     println!("Welcome to Caddy Manager!");
@@ -25,11 +32,11 @@ fn main() {
         io::stdin().read_line(&mut input).unwrap();
 
         match input.trim().to_lowercase().as_str() {
-            "add" | "a" => {}
-            "remove" | "r" => {}
-            "show" | "s" => {}
-            "enable" | "e" => {}
-            "disable" | "d" => {}
+            "add" | "a" => add(),
+            "remove" | "r" => remove(),
+            "show" | "s" => show(),
+            "enable" | "e" => enable(),
+            "disable" | "d" => disable(),
             "configure" | "config" | "c" => configure(&mut config),
             "quit" | "q" => break,
             _ => println!(r#"Invalid input, "exit" to exit"#),
@@ -38,7 +45,7 @@ fn main() {
 
     println!("Goodbye!");
 
-    if config.changed { config.dump(); }
+    config.dump();
 }
 
 fn add() {}
@@ -106,6 +113,7 @@ fn con_add(vec: &mut Vec<String>) {
     }
 
     vec.push(String::from(input));
+    vec.sort();
 }
 
 fn con_rem(vec: &mut Vec<String>) {
