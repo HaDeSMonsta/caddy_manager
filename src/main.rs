@@ -46,7 +46,7 @@ fn main() {
         }
     }
 
-    println!("Goodbye!");
+    println!("Remember to apply the changes, goodbye!");
 
     config.dump();
 }
@@ -264,7 +264,7 @@ fn show() {
     for site in &disabled_sites {
         if site.len() > max_len { max_len = site.len(); }
     }
-    
+
     print_with_padding("Site", "Status", max_len);
     println!("{}", "-".repeat(max_len + 3 + 6)); // " | " + "Status"
 
