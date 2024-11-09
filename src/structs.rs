@@ -30,7 +30,7 @@ impl Config {
                 }
             }
         };
-            
+
         let mut reader = BufReader::new(file);
 
         let mut content = String::new();
