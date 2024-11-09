@@ -286,6 +286,7 @@ fn mk_vec_of_dir(dir: &str) -> Vec<String> {
                      .for_each(|entry| {
                          vec.push(entry.unwrap().file_name().into_string().unwrap());
                      });
+    vec.sort();
     vec
 }
 
