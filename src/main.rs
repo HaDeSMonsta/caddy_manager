@@ -2,11 +2,14 @@ mod structs;
 mod options;
 
 use std::{fs, io};
-use std::io::Write;
+use std::fs::OpenOptions;
+use std::io::{BufWriter, Write};
 use std::process::exit;
 use structs::Config;
 
 const CONFIG_FILE: &str = "caddy_manager.toml";
+const ENABLED_DIR: &str = "sites-enabled/";
+const DISABLED_DIR: &str = "sites-disabled/";
 
 fn main() {
     if fs::metadata("Caddyfile").is_err() {
@@ -32,7 +35,7 @@ fn main() {
         io::stdin().read_line(&mut input).unwrap();
 
         match input.trim().to_lowercase().as_str() {
-            "add" | "a" => add(),
+            "add" | "a" => add(&config),
             "remove" | "r" => remove(),
             "show" | "s" => show(),
             "enable" | "e" => enable(),
@@ -48,7 +51,163 @@ fn main() {
     config.dump();
 }
 
-fn add() {}
+fn add(config: &Config) {
+    if fs::metadata(ENABLED_DIR).is_err() {
+        fs::create_dir(ENABLED_DIR).expect(&format!("Unable to create {ENABLED_DIR}"));
+    }
+
+    let host = get_host(config);
+
+    println!("Which domain should be added?");
+    let mut input = String::new();
+    io::stdin().read_line(&mut input).unwrap();
+
+    let domain = if host.is_empty() {
+        String::from(input.trim())
+    } else {
+        format!("{}.{host}", input.trim())
+    };
+
+    let path = format!("{ENABLED_DIR}{domain}");
+    if fs::metadata(&path).is_ok() {
+        println!("Domain already exists, aborting");
+        return;
+    }
+
+    let target = get_target(config);
+
+    let port;
+
+    loop {
+        println!("Enter the target port");
+        input.clear();
+        io::stdin().read_line(&mut input).unwrap();
+        port = match input.trim().parse::<u16>() {
+            Ok(port) => port,
+            Err(_) => {
+                println!("Invalid input, port must be a valid u16");
+                continue;
+            }
+        };
+        break;
+    }
+
+    let site_config = format!(
+        "\
+        {domain} {{\n\
+        \treverse_proxy {target}:{port}\n\
+        \n\
+        \timport ../robots\n\
+        }}\n"
+    );
+
+    let file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .open(&path)
+        .expect(&format!("Unable to open/create file {path}"));
+
+    let mut writer = BufWriter::new(file);
+
+    writeln!(writer, "{site_config}").expect(&format!("Unable to write to {path}"));
+
+    println!("Successfully added {domain}");
+}
+
+fn get_target(config: &Config) -> String {
+    let mut target = String::new();
+
+    if config.targets.is_empty() {
+        return target;
+    }
+
+    println!("Do you want to use an existing target [Y/n]");
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input).unwrap();
+    if input.trim().to_lowercase() == "n" {
+        println!("Enter the target");
+        input.clear();
+        io::stdin().read_line(&mut input).unwrap();
+        return String::from(input.trim());
+    }
+    let len = config.targets.len();
+
+    print_indexed_vec(&config.targets);
+
+    loop {
+        input.clear();
+        print!("Select [idx] or [A]bort adding: ");
+        io::stdout().flush().unwrap();
+        io::stdin().read_line(&mut input).unwrap();
+
+        match input.trim().to_lowercase().as_str() {
+            "abort" | "a" => return target,
+            _ => {}
+        }
+
+        match input.trim().parse::<usize>() {
+            Ok(idx) => {
+                if idx >= len {
+                    println!("Input index out of range");
+                    continue;
+                }
+                target = config.targets[idx].clone();
+                return target;
+            }
+            Err(_) => {
+                println!("Invalid input");
+                continue;
+            }
+        }
+    }
+}
+
+fn get_host(config: &Config) -> String {
+    let mut host = String::new();
+
+    if config.hosts.is_empty() {
+        return host;
+    }
+
+    println!("Do you want to use an existing host [Y/n]");
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input).unwrap();
+    if input.trim().to_lowercase() == "n" {
+        return host;
+    }
+    let len = config.hosts.len();
+
+    print_indexed_vec(&config.hosts);
+
+    loop {
+        input.clear();
+        print!("Select [idx] or [A]bort adding: ");
+        io::stdout().flush().unwrap();
+        io::stdin().read_line(&mut input).unwrap();
+
+        match input.trim().to_lowercase().as_str() {
+            "abort" | "a" => return host,
+            _ => {}
+        }
+
+        match input.trim().parse::<usize>() {
+            Ok(idx) => {
+                if idx >= len {
+                    println!("Input index out of range");
+                    continue;
+                }
+                host = config.hosts[idx].clone();
+                return host;
+            }
+            Err(_) => {
+                println!("Invalid input");
+                continue;
+            }
+        }
+    }
+}
 
 fn remove() {}
 
@@ -117,24 +276,13 @@ fn con_add(vec: &mut Vec<String>) {
 }
 
 fn con_rem(vec: &mut Vec<String>) {
-    let mut len = vec.len();
+    let len = vec.len();
     if len == 0 {
         println!("Config is empty, nothing to remove");
         return;
     }
 
-    let mut width = 0;
-
-    while len > 0 {
-        len /= 10;
-        width += 1;
-    }
-
-    len = vec.len();
-
-    for i in 0..len {
-        println!("[{i:0>width$}]: {}", vec.get(i).unwrap());
-    }
+    print_indexed_vec(&vec);
 
     let idx;
     loop {
@@ -165,4 +313,21 @@ fn con_rem(vec: &mut Vec<String>) {
     }
 
     vec.remove(idx);
+}
+
+fn print_indexed_vec(vec: &Vec<String>) {
+    let mut len = vec.len();
+
+    let mut width = 0;
+
+    while len > 0 {
+        len /= 10;
+        width += 1;
+    }
+
+    len = vec.len();
+
+    for i in 0..len {
+        println!("[{i:0>width$}]: {}", vec.get(i).unwrap());
+    }
 }
