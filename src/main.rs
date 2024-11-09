@@ -36,7 +36,7 @@ fn main() {
 
         match input.trim().to_lowercase().as_str() {
             "add" | "a" => add(&config),
-            "remove" | "r" => remove(),
+            "remove" | "r" => remove(&config),
             "show" | "s" => show(),
             "enable" | "e" => enable(),
             "disable" | "d" => disable(),
@@ -209,7 +209,48 @@ fn get_host(config: &Config) -> String {
     }
 }
 
-fn remove() {}
+fn remove(config: &Config) {
+    if fs::metadata(ENABLED_DIR).is_err() {
+        println!("There are no enabled sites, aborting");
+        return;
+    }
+
+    let host = get_host(config);
+
+    println!("Which domain should be removed?");
+    let mut input = String::new();
+    io::stdin().read_line(&mut input).unwrap();
+
+    let domain = if host.is_empty() {
+        String::from(input.trim())
+    } else {
+        format!("{}.{host}", input.trim())
+    };
+
+    if domain.is_empty() {
+        println!("No domain entered, aborting");
+        return;
+    }
+
+    let path = format!("{ENABLED_DIR}{domain}");
+
+    if fs::metadata(&path).is_err() {
+        println!(r#""{path}" does not exist, aborting"#);
+        return;
+    }
+
+    println!(r#"Warning, this will delete "{path}", are you sure? [y/N]"#);
+    input.clear();
+    io::stdin().read_line(&mut input).unwrap();
+
+    if input.trim().to_lowercase() != "y" {
+        println!("Aborting, no file will be deleted");
+        return;
+    }
+
+    fs::remove_file(&path).expect(&format!("Unable to delete {path}"));
+    println!("Successfully removed {path}");
+}
 
 fn show() {}
 
