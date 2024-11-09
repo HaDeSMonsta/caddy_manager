@@ -37,9 +37,9 @@ fn main() {
         match input.trim().to_lowercase().as_str() {
             "add" | "a" => add(&config),
             "remove" | "r" => remove(&config),
-            "show" | "s" => show(),
-            "enable" | "e" => enable(),
-            "disable" | "d" => disable(),
+            "show" | "s" => show(&config),
+            "enable" | "e" => enable(&config),
+            "disable" | "d" => disable(&config),
             "configure" | "config" | "c" => configure(&mut config),
             "quit" | "q" => break,
             _ => println!(r#"Invalid input, "exit" to exit"#),
@@ -252,11 +252,67 @@ fn remove(config: &Config) {
     println!("Successfully removed {path}");
 }
 
-fn show() {}
+fn show(config: &Config) {}
 
-fn enable() {}
+fn enable(config: &Config) {
+    let action = "enabled";
+    toggle(config, DISABLED_DIR, ENABLED_DIR, action);
+    println!("Successfully {action} site");
+}
 
-fn disable() {}
+fn disable(config: &Config) {
+    let action = "disabled";
+    toggle(config, ENABLED_DIR, DISABLED_DIR, action);
+    println!("Successfully {action} site");
+}
+
+fn toggle(config: &Config, source_dir: &str, target_dir: &str, action: &str) {
+    let host = get_host(config);
+    println!("Which domain should be {action}?");
+    let mut input = String::new();
+    io::stdin().read_line(&mut input).unwrap();
+
+    let domain = if host.is_empty() {
+        String::from(input.trim())
+    } else {
+        format!("{}.{host}", input.trim())
+    };
+
+    if domain.is_empty() {
+        println!("No domain entered, aborting");
+        return;
+    }
+
+    let source_path = format!("{source_dir}{domain}");
+    let target_path = format!("{target_dir}{domain}");
+
+    if fs::metadata(&source_path).is_err() {
+        println!(r#""{source_path}" does not exist, aborting"#);
+        return;
+    }
+
+    if fs::metadata(&target_path).is_ok() {
+        println!(r#"Warning, this will delete "{source_path}", are you sure? [y/N]"#);
+        input.clear();
+        io::stdin().read_line(&mut input).unwrap();
+
+        if input.trim().to_lowercase() != "y" {
+            println!("Aborting, no file will be changed");
+            return;
+        }
+    }
+
+    if fs::metadata(&target_dir).is_err() {
+        fs::create_dir(&target_dir).expect(&format!("Unable to create {}", target_dir));
+    }
+
+    fs::rename(&source_path, &target_path).unwrap();
+
+    if fs::read_dir(&source_dir).unwrap().next().is_none() {
+        println!(r#""{source_dir}" is empty, removing"#);
+        fs::remove_dir(&source_dir).unwrap()
+    }
+}
 
 fn configure(config: &mut Config) {
     config.changed = true;
