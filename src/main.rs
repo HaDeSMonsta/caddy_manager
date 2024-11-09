@@ -1,10 +1,10 @@
 mod structs;
 mod options;
 
-use std::{fs, io};
 use std::fs::OpenOptions;
 use std::io::{BufWriter, Write};
 use std::process::exit;
+use std::{fs, io};
 use structs::Config;
 
 const CONFIG_FILE: &str = "caddy_manager.toml";
@@ -37,7 +37,7 @@ fn main() {
         match input.trim().to_lowercase().as_str() {
             "add" | "a" => add(&config),
             "remove" | "r" => remove(&config),
-            "show" | "s" => show(&config),
+            "show" | "s" => show(),
             "enable" | "e" => enable(&config),
             "disable" | "d" => disable(&config),
             "configure" | "config" | "c" => configure(&mut config),
@@ -252,7 +252,47 @@ fn remove(config: &Config) {
     println!("Successfully removed {path}");
 }
 
-fn show(config: &Config) {}
+fn show() {
+    let enabled_sites = mk_vec_of_dir(ENABLED_DIR);
+    let disabled_sites = mk_vec_of_dir(DISABLED_DIR);
+
+    let mut max_len = 0;
+
+    for site in &enabled_sites {
+        if site.len() > max_len { max_len = site.len(); }
+    }
+    for site in &disabled_sites {
+        if site.len() > max_len { max_len = site.len(); }
+    }
+    
+    print_with_padding("Site", "Status", max_len);
+    println!("{}", "-".repeat(max_len + 3 + 6)); // " | " + "Status"
+
+    for site in &enabled_sites {
+        print_with_padding(site, "enabled", max_len);
+    }
+    if !enabled_sites.is_empty() && !disabled_sites.is_empty() { println!("{}", "-".repeat(max_len + 3 + 6)); }
+    for site in &disabled_sites {
+        print_with_padding(site, "disabled", max_len);
+    }
+}
+
+fn mk_vec_of_dir(dir: &str) -> Vec<String> {
+    let mut vec = vec![];
+    if fs::metadata(dir).is_err() {
+        return vec;
+    }
+    fs::read_dir(dir).expect(&format!("Unable to read {dir}"))
+                     .for_each(|entry| {
+                         vec.push(entry.unwrap().file_name().into_string().unwrap());
+                     });
+    vec
+}
+
+fn print_with_padding(site: &str, status: &str, max_len: usize) {
+    let remaining = max_len - site.len();
+    println!("{site}{} ┃ {status}", " ".repeat(remaining));
+}
 
 fn enable(config: &Config) {
     let action = "enabled";
