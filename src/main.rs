@@ -5,6 +5,7 @@ use std::fs::OpenOptions;
 use std::io::{BufWriter, Write};
 use std::process::exit;
 use std::{fs, io};
+use std::cmp::max;
 use structs::Config;
 
 const CONFIG_FILE: &str = "caddy_manager.toml";
@@ -256,24 +257,27 @@ fn show() {
     let enabled_sites = mk_vec_of_dir(ENABLED_DIR);
     let disabled_sites = mk_vec_of_dir(DISABLED_DIR);
 
-    let mut max_len = 0;
+    let mut max_domain_len = 0;
+    let mut max_staus_len = "Status".len();
+    if !enabled_sites.is_empty() {max_staus_len = max(max_staus_len, "enabled".len());}
+    if !disabled_sites.is_empty() {max_staus_len = max(max_staus_len, "disabled".len());}
 
     for site in &enabled_sites {
-        if site.len() > max_len { max_len = site.len(); }
+        max_domain_len = max(max_domain_len, site.len());
     }
     for site in &disabled_sites {
-        if site.len() > max_len { max_len = site.len(); }
+        max_domain_len = max(max_domain_len, site.len());
     }
 
-    print_with_padding("Site", "Status", max_len);
-    println!("{}", "-".repeat(max_len + 3 + 6)); // " | " + "Status"
+    print_with_padding("Site", "Status", max_domain_len);
+    println!("{}", "-".repeat(max_domain_len + 3 + max_staus_len)); // " | " == 3
 
     for site in &enabled_sites {
-        print_with_padding(site, "enabled", max_len);
+        print_with_padding(site, "enabled", max_domain_len);
     }
-    if !enabled_sites.is_empty() && !disabled_sites.is_empty() { println!("{}", "-".repeat(max_len + 3 + 6)); }
+    if !enabled_sites.is_empty() && !disabled_sites.is_empty() { println!("{}", "-".repeat(max_domain_len + 3 + 6)); }
     for site in &disabled_sites {
-        print_with_padding(site, "disabled", max_len);
+        print_with_padding(site, "disabled", max_domain_len);
     }
 }
 
