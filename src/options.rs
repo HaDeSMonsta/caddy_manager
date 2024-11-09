@@ -6,6 +6,7 @@ pub fn get_main_options() -> String {
         "Enable",
         "Disable",
         "Configure",
+        "Quit",
     ];
     map_options("Options", options)
 }

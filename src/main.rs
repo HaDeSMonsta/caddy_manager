@@ -1,15 +1,21 @@
 mod structs;
 mod options;
 
-use std::io;
+use std::{fs, io};
 use std::io::Write;
+use std::process::exit;
 use structs::Config;
 
 const CONFIG_FILE: &str = "caddy_manager.toml";
 
 fn main() {
+    if fs::metadata("Caddyfile").is_err() {
+        println!("Caddyfile not found, check that you are in the correct directory");
+        exit(1);
+    }
+
     let mut config = Config::init();
-    let options = format!("{} exit", options::get_main_options());
+    let options = options::get_main_options();
 
     println!("Welcome to Caddy Manager!");
 
@@ -19,8 +25,13 @@ fn main() {
         io::stdin().read_line(&mut input).unwrap();
 
         match input.trim().to_lowercase().as_str() {
+            "add" | "a" => {}
+            "remove" | "r" => {}
+            "show" | "s" => {}
+            "enable" | "e" => {}
+            "disable" | "d" => {}
             "configure" | "config" | "c" => configure(&mut config),
-            "exit" | "e" => break,
+            "quit" | "q" => break,
             _ => println!(r#"Invalid input, "exit" to exit"#),
         }
     }
@@ -29,6 +40,16 @@ fn main() {
 
     if config.changed { config.dump(); }
 }
+
+fn add() {}
+
+fn remove() {}
+
+fn show() {}
+
+fn enable() {}
+
+fn disable() {}
 
 fn configure(config: &mut Config) {
     config.changed = true;
