@@ -71,8 +71,10 @@ fn add(config: &Config) {
 
     let path = format!("{ENABLED_DIR}{domain}");
     if fs::metadata(&path).is_ok() {
-        println!("Domain already exists, aborting");
-        return;
+        println!("Domain already exists, continue and override? [y/N]");
+        input.clear();
+        io::stdin().read_line(&mut input).unwrap();
+        if input.trim().to_lowercase() != "y" { return; }
     }
 
     let target = get_target(config);
@@ -259,8 +261,8 @@ fn show() {
 
     let mut max_domain_len = 0;
     let mut max_staus_len = "Status".len();
-    if !enabled_sites.is_empty() {max_staus_len = max(max_staus_len, "enabled".len());}
-    if !disabled_sites.is_empty() {max_staus_len = max(max_staus_len, "disabled".len());}
+    if !enabled_sites.is_empty() { max_staus_len = max(max_staus_len, "enabled".len()); }
+    if !disabled_sites.is_empty() { max_staus_len = max(max_staus_len, "disabled".len()); }
 
     for site in &enabled_sites {
         max_domain_len = max(max_domain_len, site.len());
